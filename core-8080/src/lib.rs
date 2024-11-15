@@ -1,4 +1,9 @@
-use std::result;
+mod register_pair;
+mod instructions;
+
+use instructions::stax;
+
+use crate::register_pair::RegisterPair;
 
 const MEM_SIZE: usize = 0x10000;
 const NUM_REGISTERS: usize = 6;
@@ -9,12 +14,9 @@ pub struct CPU {
     program_counter: u16,
     stack: Vec<u16>,
     a_reg: u8, // accumulator
-    b_reg: u8, // msb when paired with c
-    c_reg: u8,
-    d_reg: u8, // msb when paired with e
-    e_reg: u8,
-    h_reg: u8, // msb when paired with h
-    l_reg: u8,
+    bc_reg: RegisterPair,
+    de_reg: RegisterPair,
+    hl_reg: RegisterPair,
     condition_flags: ConditionFlags,
 }
 
@@ -23,7 +25,7 @@ struct ConditionFlags {
     sign: bool,
     parity: bool,
     carry: bool,
-    // aux_carry: bool, // Not used by Space Invades, so I'm ignoring it
+    // aux_carry: bool, // Not used by Space Invaders, so I'm ignoring it
 }
 
 enum AddessingMode {
@@ -52,33 +54,34 @@ impl CPU {
         match opcode {
             0x00 => (), // NOP
             0x01 => { // LXI B,d16
-                self.c_reg = self.fetch_next();
-                self.b_reg = self.fetch_next();
+                self.bc_reg.low = self.fetch_next();
+                self.bc_reg.high = self.fetch_next();
             },
             0x02 => { // STAX B
-                self.memory[concat_bytes(self.b_reg, self.c_reg) as usize] = self.a_reg;
+                // self.memory[self.bc_reg.get_pair() as usize] = self.a_reg;
+                instructions::stax(&mut self.bc_reg, &mut self.a_reg, &mut self.memory);
             },
             0x03 => { // INX B
-                (self.b_reg, self.c_reg) = split_bytes(concat_bytes(self.b_reg, self.c_reg).wrapping_add(1));
+                // (self.bc_reg.high, self.bc_reg.low) = split_bytes(concat_bytes(self.bc_reg.high, self.bc_reg.low).wrapping_add(1));
+                // self.bc_reg.set_pair(self.bc_reg.get_pair().wrapping_add(1));
+                instructions::inx(&mut self.bc_reg);
             },
             0x13 => { // INX D
-                (self.d_reg, self.e_reg) = split_bytes(concat_bytes(self.d_reg, self.e_reg).wrapping_add(1));
+                // (self.d_reg, self.e_reg) = split_bytes(concat_bytes(self.d_reg, self.e_reg).wrapping_add(1));
+                // self.de_reg.set_pair(self.de_reg.get_pair().wrapping_add(1));
+                instructions::inx(&mut self.de_reg);
             },
             0x04 => { // INR B
-                self.b_reg = self.b_reg.wrapping_add(1);
-                self.condition_flags.zero = self.b_reg == 0;
-                self.condition_flags.sign = self.b_reg & 0x80 != 0;
-                self.condition_flags.parity = parity(self.b_reg);
+                //self.b_reg = self.b_reg.wrapping_add(1);
+                //self.condition_flags.zero = self.b_reg == 0;
+                //self.condition_flags.sign = self.b_reg & 0x80 != 0;
+                //self.condition_flags.parity = parity(self.b_reg);
             },
             0x05 => { // DCR B
-                let result = (self.b_reg);
+                //let result = (self.b_reg);
             },
             _ => panic!("Attempted to execute undefined instruction {:#03x}", opcode)
         }
-    }
-
-    fn inx(&mut self) {
-        todo!()
     }
 }
 
