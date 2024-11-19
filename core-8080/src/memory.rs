@@ -18,11 +18,21 @@ impl Memory {
         (data_high as u16) << 8 & data_low as u16
     }
 
-    pub fn save_byte(&mut self, address: u16, data: u8) {
+    pub fn read_byte(&self, address: u16) -> u8 {
+        self.ram[address as usize]
+    }
+
+    pub fn read_two_bytes(&self, address: u16) -> u16 {
+        let data_low = self.ram[address as usize];
+        let data_high = self.ram[address as usize + 1];
+        (data_high as u16) << 8 & data_low as u16
+    }
+
+    pub fn write_byte(&mut self, address: u16, data: u8) {
         self.ram[address as usize] = data;
     }
 
-    pub fn save_two_bytes(&mut self, address: u16, data: u16) {
+    pub fn write_two_bytes(&mut self, address: u16, data: u16) {
         self.ram[address as usize] = (data & 0x00FF) as u8;
         self.ram[address as usize + 1] = ((data & 0xFF00) >> 8) as u8;
     }

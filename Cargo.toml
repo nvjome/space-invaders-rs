@@ -1,3 +1,4 @@
 [workspace]
 
 members = ["core-8080", "frontend-sdl"]
+resolver = "2"
