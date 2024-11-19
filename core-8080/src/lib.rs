@@ -146,6 +146,10 @@ impl CPU {
             // ****** Arithmetic Group ******
 
             // ****** Branch Group ******
+            // *** Returns ***
+            0xC9 => { // RET
+                self.memory.program_counter = self.stack.pop().unwrap(); // Pop program counter from the stack
+            },
             0xC0 => { // RNZ
                 if self.flags.zero == false {
                     self.memory.program_counter = self.stack.pop().unwrap();
@@ -187,6 +191,58 @@ impl CPU {
                 }
             },
 
+            // *** Calls ***
+            0xCD => { // CALL a16
+                self.stack.push(self.memory.program_counter); // Push program counter to the stack
+                self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
+            }
+            
+            // *** Jumps ***
+            0xC3 => { //JMP a16
+                self.memory.program_counter = self.memory.fetch_two_bytes();
+            },
+            0xC2 => { // JNZ a16
+                if self.flags.zero == false {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xCA => { // JZ a16
+                if self.flags.zero == true {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xD2 => { // JNC a16
+                if self.flags.carry == false {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xDA => { // JC a16
+                if self.flags.carry == true {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xE2 => { // JPO a16
+                if self.flags.parity == false {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xEA => { // JPE a16
+                if self.flags.parity == true {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xF2 => { // JP a16
+                if self.flags.sign == false {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xFA => { // JM a16
+                if self.flags.sign == true {
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+
+            // ****** Stack, IO, and Machine Control Group ******
             0xC1 => { // POP B
                 self.registers.bc_reg.set_pair(self.stack.pop().unwrap());
             },
@@ -200,18 +256,6 @@ impl CPU {
                 let data = self.stack.pop().unwrap(); // Use local avoid double reference
                 self.restore_psw(data);
             },
-            
-            0xC3 => { //JMP a16
-                self.memory.program_counter = self.memory.fetch_two_bytes();
-            },
-            0xC9 => { // RET
-                self.memory.program_counter = self.stack.pop().unwrap(); // Pop program counter from the stack
-            },
-            0xCD => { // CALL a16
-                self.stack.push(self.memory.program_counter); // Push program counter to the stack
-                self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
-            }
-
             0xC5 => { // PUSH B
                 self.stack.push(self.registers.bc_reg.get_pair());
             },
