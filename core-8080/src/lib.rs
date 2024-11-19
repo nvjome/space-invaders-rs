@@ -19,7 +19,7 @@ struct ConditionFlags {
     // aux_carry: bool, // Not used by Space Invaders, so I'm ignoring it
 }
 
-struct ConditionFlagsStatus {
+/*struct ConditionFlagsStatus {
     zero: Option<bool>,
     sign: Option<bool>,
     parity: Option<bool>,
@@ -33,7 +33,7 @@ enum AddessingMode {
     RegisterIndirect,
     RegisterPairIndirect,
     Immediate,
-}
+}*/
 
 impl CPU {
     pub fn cycle(&mut self) {
@@ -61,7 +61,7 @@ impl CPU {
     }
     */
 
-    fn save_psw(&self) -> u16 {
+    fn generate_psw(&self) -> u16 { // Could break apart save and restore to seperate Registers and ConditionFlags methods
         let data_l = (self.flags.zero as u8) |
             (self.flags.sign as u8) << 1 |
             (self.flags.parity as u8) << 2 |
@@ -197,7 +197,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.stack.pop().unwrap());
             },
             0xF1 => { // POP PSW
-                let data = self.stack.pop().unwrap(); // Use local avoid double reference. Could move stack into memory struct to fix...
+                let data = self.stack.pop().unwrap(); // Use local avoid double reference
                 self.restore_psw(data);
             },
             
@@ -211,6 +211,21 @@ impl CPU {
                 self.stack.push(self.memory.program_counter); // Push program counter to the stack
                 self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
             }
+
+            0xC5 => { // PUSH B
+                self.stack.push(self.registers.bc_reg.get_pair());
+            },
+            0xD5 => { // PUSH D
+                self.stack.push(self.registers.de_reg.get_pair());
+            },
+            0xE5 => { // PUSH H
+                self.stack.push(self.registers.hl_reg.get_pair());
+            },
+            0xF5 => { // PUSH PSW
+                let data = self.generate_psw();
+                self.stack.push(data);
+            },
+
             _ => panic!("Attempted to execute undefined instruction {:#03x}", opcode)
         }
     }
