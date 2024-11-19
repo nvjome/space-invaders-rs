@@ -78,7 +78,7 @@ impl CPU {
     }
 
     fn execute(&mut self, opcode: u8) {
-        // Super big and ugly match statement because I'm not sure of a better way and I don't have
+        // Super big and ugly match statement because I'm not sure of a better way
         match opcode {
             // ****** Data Transfer Group ******
             0x01 => { // LXI B,d16
@@ -271,6 +271,200 @@ impl CPU {
                 self.stack.push(self.stack_cache.pop().unwrap());
             },
 
+            0x40 => (), // MOV B,B
+            0x41 => { // MOV B,C
+                self.registers.bc_reg.high = self.registers.bc_reg.low;
+            },
+            0x42 => { // MOV B,D
+                self.registers.bc_reg.high = self.registers.de_reg.high;
+            },
+            0x43 => { // MOV B,E
+                self.registers.bc_reg.high = self.registers.de_reg.low;
+            },
+            0x44 => { // MOV B,H
+                self.registers.bc_reg.high = self.registers.hl_reg.high;
+            },
+            0x45 => { // MOV B,L
+                self.registers.bc_reg.high = self.registers.hl_reg.low;
+            },
+            0x46 => { // MOV B,M
+                self.registers.bc_reg.high = self.memory.read_byte(self.registers.hl_reg.get_pair());
+            },
+            0x47 => { // MOV B,A
+                self.registers.bc_reg.high = self.registers.a_reg;
+            },
+
+            0x48 => { // MOV C,B
+                self.registers.bc_reg.low = self.registers.bc_reg.high;
+            },
+            0x49 => (), // MOV C,C
+            0x4A => { // MOV C,D
+                self.registers.bc_reg.low = self.registers.de_reg.high;
+            },
+            0x4B => { // MOV C,E
+                self.registers.bc_reg.low = self.registers.de_reg.low;
+            },
+            0x4C => { // MOV C,H
+                self.registers.bc_reg.low = self.registers.hl_reg.high;
+            },
+            0x4D => { // MOV C,L
+                self.registers.bc_reg.low = self.registers.hl_reg.low;
+            },
+            0x4E => { // MOV C,M
+                self.registers.bc_reg.low = self.memory.read_byte(self.registers.hl_reg.get_pair());
+            },
+            0x4F => { // MOV C,A
+                self.registers.bc_reg.low = self.registers.a_reg;
+            },
+
+            0x50 => { // MOV D,B
+                self.registers.de_reg.high = self.registers.bc_reg.high;
+            },
+            0x51 => { // MOV D,C
+                self.registers.de_reg.high = self.registers.bc_reg.low;
+            },
+            0x52 => (), // MOV D,D
+            0x53 => { // MOV D,E
+                self.registers.de_reg.high = self.registers.de_reg.low;
+            },
+            0x54 => { // MOV D,H
+                self.registers.de_reg.high = self.registers.hl_reg.high;
+            },
+            0x55 => { // MOV D,L
+                self.registers.de_reg.high = self.registers.hl_reg.low;
+            },
+            0x56 => { // MOV D,M
+                self.registers.de_reg.high = self.memory.read_byte(self.registers.hl_reg.get_pair());
+            },
+            0x57 => { // MOV D,A
+                self.registers.de_reg.high = self.registers.a_reg;
+            },
+
+            0x58 => { // MOV E,B
+                self.registers.de_reg.low = self.registers.bc_reg.high;
+            },
+            0x59 => { // MOV E,C
+                self.registers.de_reg.low = self.registers.bc_reg.low;
+            },
+            0x5A => { // MOV E,D
+                self.registers.de_reg.low = self.registers.de_reg.high;
+            },
+            0x5B => (), // MOV E,E
+            0x5C => { // MOV E,H
+                self.registers.de_reg.low = self.registers.hl_reg.high;
+            },
+            0x5D => { // MOV E,L
+                self.registers.de_reg.low = self.registers.hl_reg.low;
+            },
+            0x5E => { // MOV E,M
+                self.registers.de_reg.low = self.memory.read_byte(self.registers.hl_reg.get_pair());
+            },
+            0x5F => { // MOV E,A
+                self.registers.de_reg.low = self.registers.a_reg;
+            },
+
+            0x60 => { // MOV H,B
+                self.registers.hl_reg.high = self.registers.bc_reg.high;
+            },
+            0x61 => { // MOV H,C
+                self.registers.hl_reg.high = self.registers.bc_reg.low;
+            },
+            0x62 => { // MOV H,D
+                self.registers.hl_reg.high = self.registers.de_reg.high;
+            },
+            0x63 => { // MOV H,E
+                self.registers.hl_reg.high = self.registers.de_reg.low;
+            },
+            0x64 => (), // MOV H,H
+            0x65 => { // MOV H,L
+                self.registers.hl_reg.high = self.registers.hl_reg.low;
+            },
+            0x66 => { // MOV H,M
+                self.registers.hl_reg.high = self.memory.read_byte(self.registers.hl_reg.get_pair());
+            },
+            0x67 => { // MOV H,A
+                self.registers.hl_reg.high = self.registers.a_reg;
+            },
+
+            0x68 => { // MOV L,B
+                self.registers.hl_reg.low = self.registers.bc_reg.high;
+            },
+            0x69 => { // MOV L,C
+                self.registers.hl_reg.low = self.registers.bc_reg.low;
+            },
+            0x6A => { // MOV L,D
+                self.registers.hl_reg.low = self.registers.de_reg.high;
+            },
+            0x6B => { // MOV L,E
+                self.registers.hl_reg.low = self.registers.bc_reg.low;
+            },
+            0x6C => { // MOV L,H
+                self.registers.hl_reg.low = self.registers.hl_reg.high;
+            },
+            0x6D => (), // MOV L,L
+            0x6E => { // MOV L,M
+                self.registers.hl_reg.low = self.memory.read_byte(self.registers.hl_reg.get_pair());
+            },
+            0x6F => { // MOV L,A
+                self.registers.hl_reg.low = self.registers.a_reg;
+            },
+
+            0x70 => { // MOV M,B
+                let addr = self.registers.hl_reg.get_pair();
+                self.memory.write_byte(addr, self.registers.bc_reg.high);
+            },
+            0x71 => { // MOV M,C
+                let addr = self.registers.hl_reg.get_pair();
+                self.memory.write_byte(addr, self.registers.bc_reg.low);
+            },
+            0x72 => { // MOV M,D
+                let addr = self.registers.hl_reg.get_pair();
+                self.memory.write_byte(addr, self.registers.de_reg.high);
+            },
+            0x73 => { // MOV M,E
+                let addr = self.registers.hl_reg.get_pair();
+                self.memory.write_byte(addr, self.registers.de_reg.low);
+            },
+            0x74 => { // MOV M,H
+                let addr = self.registers.hl_reg.get_pair();
+                self.memory.write_byte(addr, self.registers.hl_reg.high);
+            },
+            0x75 => { // MOV M,L
+                let addr = self.registers.hl_reg.get_pair();
+                self.memory.write_byte(addr, self.registers.hl_reg.low);
+            },
+            0x77 => { // MOV M,A
+                let addr = self.registers.hl_reg.get_pair();
+                self.memory.write_byte(addr, self.registers.a_reg);
+            },
+
+            0x78 => { // MOV A,B
+                self.registers.a_reg = self.registers.bc_reg.high;
+            },
+            0x79 => { // MOV A,C
+                self.registers.a_reg = self.registers.bc_reg.low;
+            },
+            0x7A => { // MOV A,D
+                self.registers.a_reg = self.registers.de_reg.high;
+            },
+            0x7B => { // MOV A,E
+                self.registers.a_reg = self.registers.de_reg.low;
+            },
+            0x7C => { // MOV A,H
+                self.registers.a_reg = self.registers.hl_reg.high;
+            },
+            0x7D => { // MOV A,L
+                self.registers.a_reg = self.registers.hl_reg.low;
+            },
+            0x7E => { // MOV A,M
+                let addr = self.registers.hl_reg.get_pair();
+                self.registers.a_reg = self.memory.read_byte(addr);
+            },
+            0x7F => (), // MOV A,A
+
+            // ****** Arithmetic Group ******
+
+            // ****** Logic Group ******
             0x07 => { // RLC
                 todo!()
             },
@@ -295,8 +489,6 @@ impl CPU {
             0x3F => { // CMC
                 self.flags.carry = !self.flags.carry;
             },
-
-            // ****** Arithmetic Group ******
 
             // ****** Branch Group ******
             // *** Returns ***
