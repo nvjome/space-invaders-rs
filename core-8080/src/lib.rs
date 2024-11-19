@@ -41,7 +41,7 @@ impl CPU {
         self.execute(opcode);
     }
 
-    fn process_condition_flags(&mut self, flags: ConditionFlagsStatus) {
+    /*fn process_condition_flags(&mut self, flags: ConditionFlagsStatus) {
         match flags.zero {
             Some(f) => self.flags.zero = f,
             None => ()
@@ -59,19 +59,29 @@ impl CPU {
             None => ()
         }
     }
+    */
+
+    fn save_psw(&self) -> u16 {
+        let data_l = (self.flags.zero as u8) |
+            (self.flags.sign as u8) << 1 |
+            (self.flags.parity as u8) << 2 |
+            (self.flags.carry as u8) << 3;
+        (self.registers.a_reg as u16) << 8 | (data_l as u16)
+    }
+
+    fn restore_psw(&mut self, psw: u16) {
+        self.registers.a_reg = ((psw & 0xFF00) >> 8) as u8;
+        self.flags.zero = (psw & 0x01) == 0x01;
+        self.flags.parity = (psw & 0x02) == 0x01;
+        self.flags.carry = (psw & 0x03) == 0x01;
+    }
 
     fn execute(&mut self, opcode: u8) {
-        // New condition flags
-        let mut new_flags = ConditionFlagsStatus {
-            zero: None,
-            sign: None,
-            parity: None,
-            carry: None
-        };
-
         // Super big and ugly match statement because I'm not sure of a better way and I don't have
         match opcode {
             0x00 => (), // NOP
+
+            // ****** Data Transfer Group ******
             0x01 => { // LXI B,d16
                 self.registers.bc_reg.set_pair(self.memory.fetch_two_bytes());
             },
@@ -132,6 +142,75 @@ impl CPU {
                 let addr = self.memory.fetch_two_bytes();
                 self.memory.save_two_bytes(addr, self.registers.hl_reg.get_pair());
             },
+
+            // ****** Arithmetic Group ******
+
+            // ****** Branch Group ******
+            0xC0 => { // RNZ
+                if self.flags.zero == false {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+            0xC8 => { // RZ
+                if self.flags.zero == true {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+            0xD0 => { // RNC
+                if self.flags.carry == false {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+            0xD8 => { // RC
+                if self.flags.carry == true {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+            0xE0 => { // RPO
+                if self.flags.parity == false {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+            0xE8 => { // RPE
+                if self.flags.parity == true {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+            0xF0 => { // RP
+                if self.flags.sign == false {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+            0xF8 => { // RM
+                if self.flags.sign == true {
+                    self.memory.program_counter = self.stack.pop().unwrap();
+                }
+            },
+
+            0xC1 => { // POP B
+                self.registers.bc_reg.set_pair(self.stack.pop().unwrap());
+            },
+            0xD1 => { // POP D
+                self.registers.de_reg.set_pair(self.stack.pop().unwrap());
+            },
+            0xE1 => { // POP H
+                self.registers.hl_reg.set_pair(self.stack.pop().unwrap());
+            },
+            0xF1 => { // POP PSW
+                let data = self.stack.pop().unwrap(); // Use local avoid double reference. Could move stack into memory struct to fix...
+                self.restore_psw(data);
+            },
+            
+            0xC3 => { //JMP a16
+                self.memory.program_counter = self.memory.fetch_two_bytes();
+            },
+            0xC9 => { // RET
+                self.memory.program_counter = self.stack.pop().unwrap(); // Pop program counter from the stack
+            },
+            0xCD => { // CALL a16
+                self.stack.push(self.memory.program_counter); // Push program counter to the stack
+                self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
+            }
             _ => panic!("Attempted to execute undefined instruction {:#03x}", opcode)
         }
     }
