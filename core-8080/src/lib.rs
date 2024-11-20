@@ -4,6 +4,15 @@ mod memory;
 use crate::registers::Registers;
 use crate::memory::Memory;
 
+const SR_0_ADDR: u16 = 0x0000;
+const SR_1_ADDR: u16 = 0x0008;
+const SR_2_ADDR: u16 = 0x0010;
+const SR_3_ADDR: u16 = 0x0018;
+const SR_4_ADDR: u16 = 0x0020;
+const SR_5_ADDR: u16 = 0x0028;
+const SR_6_ADDR: u16 = 0x0030;
+const SR_7_ADDR: u16 = 0x0038;
+
 pub struct CPU {
     memory: Memory,
     registers: Registers,
@@ -483,12 +492,6 @@ impl CPU {
                     self.memory.program_counter = self.memory.pop_stack();
                 }
             },
-
-            // *** Calls ***
-            0xCD => { // CALL a16
-                self.memory.push_stack(self.memory.program_counter); // Push program counter to the stack
-                self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
-            }
             
             // *** Jumps ***
             0xC3 => { //JMP a16
@@ -533,6 +536,94 @@ impl CPU {
                 if self.flags.sign == true {
                     self.memory.program_counter = self.memory.fetch_two_bytes();
                 }
+            },
+
+            // *** Calls ***
+            0xC4 => { // CNZ a16
+                if self.flags.zero == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xCC => { // CZ a16
+                if self.flags.zero == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xD4 => { // CNC a16
+                if self.flags.carry == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xDC => { // CC a16
+                if self.flags.carry == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xE4 => { // CPO a16
+                if self.flags.parity == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xEC => { // CPE a16
+                if self.flags.parity == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xF4 => { // CP a16
+                if self.flags.sign == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xFC => { // CM a16
+                if self.flags.sign == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xCD => { // CALL a16
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
+            }
+
+            // *** Subroutines ***
+            0xC7 => { // RST 0
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_0_ADDR;
+            },
+            0xCF => { // RST 1
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_1_ADDR;
+            },
+            0xD7 => { // RST 2
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_2_ADDR;
+            },
+            0xDF => { // RST 3
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_3_ADDR;
+            },
+            0xE7 => { // RST 4
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_4_ADDR;
+            },
+            0xEF => { // RST 5
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_5_ADDR;
+            },
+            0xF7 => { // RST 6
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_6_ADDR;
+            },
+            0xFF => { // RST 7
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_7_ADDR;
             },
 
             // ****** Stack, IO, and Machine Control Group ******
@@ -607,5 +698,5 @@ fn parity(a: u8) -> bool {
     let mut a = a;
     a ^= a >> 4;
     a &= 0x0F;
-    return (0x6996 >> a) & 0x1 == 1;
+    return !((0x6996 >> a) & 0x1 == 1);
 }
