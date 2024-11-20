@@ -3,6 +3,7 @@ const MEM_SIZE: usize = 0x10000;
 pub struct Memory {
     pub ram: [u8; MEM_SIZE],
     pub program_counter: u16,
+    pub stack_pointer: u16,
 }
 
 impl Memory {
@@ -35,5 +36,16 @@ impl Memory {
     pub fn write_two_bytes(&mut self, address: u16, data: u16) {
         self.ram[address as usize] = (data & 0x00FF) as u8;
         self.ram[address as usize + 1] = ((data & 0xFF00) >> 8) as u8;
+    }
+
+    pub fn pop_stack(&mut self) -> u16 {
+        let data = self.read_two_bytes(self.stack_pointer);
+        self.stack_pointer += 2;
+        data
+    }
+
+    pub fn push_stack(&mut self, data: u16) {
+        self.stack_pointer -= 2;
+        self.write_two_bytes(self.stack_pointer, data);
     }
 }

@@ -6,8 +6,6 @@ use crate::memory::Memory;
 
 pub struct CPU {
     memory: Memory,
-    stack: Vec<u16>,
-    stack_cache: Vec<u16>,
     registers: Registers,
     flags: ConditionFlags,
 }
@@ -20,47 +18,11 @@ struct ConditionFlags {
     // aux_carry: bool, // Not used by Space Invaders, so I'm ignoring it
 }
 
-/*struct ConditionFlagsStatus {
-    zero: Option<bool>,
-    sign: Option<bool>,
-    parity: Option<bool>,
-    carry: Option<bool>,
-}
-
-enum AddessingMode {
-    Direct,
-    Register,
-    RegisterPair,
-    RegisterIndirect,
-    RegisterPairIndirect,
-    Immediate,
-}*/
-
 impl CPU {
     pub fn cycle(&mut self) {
         let opcode = self.memory.fetch_byte();
         self.execute(opcode);
     }
-
-    /*fn process_condition_flags(&mut self, flags: ConditionFlagsStatus) {
-        match flags.zero {
-            Some(f) => self.flags.zero = f,
-            None => ()
-        }
-        match flags.sign {
-            Some(f) => self.flags.sign = f,
-            None => ()
-        }
-        match flags.carry {
-            Some(f) => self.flags.carry = f,
-            None => ()
-        }
-        match flags.parity {
-            Some(f) => self.flags.parity = f,
-            None => ()
-        }
-    }
-    */
 
     fn generate_psw(&self) -> u16 { // Could break apart save and restore to seperate Registers and ConditionFlags methods
         let data_l = (self.flags.zero as u8) |
@@ -91,9 +53,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.memory.fetch_two_bytes());
             },
             0x31 => { // LXI SP,d16
-                // Bit of a tricky opcode, since CPU doesn't have a stack pointer
-                // Interpreted as pushing d16 to the stack
-                self.stack.push(self.memory.fetch_two_bytes());
+                self.memory.stack_pointer = self.memory.fetch_two_bytes();
             },
 
             0x02 => { // STAX B
@@ -113,13 +73,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.registers.hl_reg.get_pair().wrapping_add(1));
             },
             0x33 => { // INX SP
-                // Again tricky since there is no stack pointer.
-                // Treat as popping off and caching most recent stack value, as if the stack pointer
-                // was actually incremented, but the data is still in memory.
-                // See 0x3B DCX SP for the complement function.
-                // If this doesn't work, will probably have to restructure to include the stack in the RAM
-                // like the 8080 actually does.
-                self.stack_cache.push(self.stack.pop().unwrap());
+                self.memory.stack_pointer = self.memory.stack_pointer.wrapping_add(1);
             },
 
             0x04 => { // INR B
@@ -262,13 +216,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.registers.hl_reg.get_pair().wrapping_sub(1));
             },
             0x3B => { //DCX SP
-                // Again tricky since there is no stack pointer.
-                // Treat as pushing recent cached value to stack, as if the stack pointer
-                // was actually decremented, and the data was still in memory.
-                // See 0x33 DCX SP for the complement function.
-                // If this doesn't work, will probably have to restructure to include the stack in the RAM
-                // like the 8080 actually does.
-                self.stack.push(self.stack_cache.pop().unwrap());
+                self.memory.stack_pointer = self.memory.stack_pointer.wrapping_sub(1);
             },
 
             0x40 => (), // MOV B,B
@@ -493,52 +441,52 @@ impl CPU {
             // ****** Branch Group ******
             // *** Returns ***
             0xC9 => { // RET
-                self.memory.program_counter = self.stack.pop().unwrap(); // Pop program counter from the stack
+                self.memory.program_counter = self.memory.pop_stack();
             },
             0xC0 => { // RNZ
                 if self.flags.zero == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xC8 => { // RZ
                 if self.flags.zero == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xD0 => { // RNC
                 if self.flags.carry == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xD8 => { // RC
                 if self.flags.carry == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xE0 => { // RPO
                 if self.flags.parity == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xE8 => { // RPE
                 if self.flags.parity == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xF0 => { // RP
                 if self.flags.sign == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xF8 => { // RM
                 if self.flags.sign == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
 
             // *** Calls ***
             0xCD => { // CALL a16
-                self.stack.push(self.memory.program_counter); // Push program counter to the stack
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to the stack
                 self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
             }
             
@@ -593,30 +541,30 @@ impl CPU {
                 self.memory.program_counter -= 1;
             },
             0xC1 => { // POP B
-                self.registers.bc_reg.set_pair(self.stack.pop().unwrap());
+                self.registers.bc_reg.set_pair(self.memory.pop_stack());
             },
             0xD1 => { // POP D
-                self.registers.de_reg.set_pair(self.stack.pop().unwrap());
+                self.registers.de_reg.set_pair(self.memory.pop_stack());
             },
             0xE1 => { // POP H
-                self.registers.hl_reg.set_pair(self.stack.pop().unwrap());
+                self.registers.hl_reg.set_pair(self.memory.pop_stack());
             },
             0xF1 => { // POP PSW
-                let data = self.stack.pop().unwrap(); // Use local avoid double reference
+                let data = self.memory.pop_stack(); // Use local avoid double reference
                 self.restore_psw(data);
             },
             0xC5 => { // PUSH B
-                self.stack.push(self.registers.bc_reg.get_pair());
+                self.memory.push_stack(self.registers.bc_reg.get_pair());
             },
             0xD5 => { // PUSH D
-                self.stack.push(self.registers.de_reg.get_pair());
+                self.memory.push_stack(self.registers.de_reg.get_pair());
             },
             0xE5 => { // PUSH H
-                self.stack.push(self.registers.hl_reg.get_pair());
+                self.memory.push_stack(self.registers.hl_reg.get_pair());
             },
             0xF5 => { // PUSH PSW
                 let data = self.generate_psw();
-                self.stack.push(data);
+                self.memory.push_stack(data);
             },
             0xE3 => { // XTHL
                 let temp = self.memory.program_counter;
