@@ -468,10 +468,27 @@ impl CPU {
                 self.flags.carry = temp & 0x01 == 0x01;
             },
             0x27 => { // DAA
-                todo!()
+                let mut data_l = self.registers.a_reg & 0x0F;
+                let mut data_h = self.registers.a_reg >> 4;
+                let mut carry = false;
+                if data_l > 9 {
+                    data_l += 6;
+                    if data_l > 0x0F {
+                        data_h += data_l >> 4;
+                    }
+                }
+                if (data_h > 9)  | (self.flags.carry == true) {
+                    data_h += 6;
+                    if data_h > 0x0F { carry = true }
+                }
+                self.registers.a_reg = (data_h << 4) | (data_l & 0x0F);
+                self.flags.carry = carry;
+                self.flags.zero = self.registers.a_reg == 0;
+                self.flags.sign = self.registers.a_reg & 0x80 != 0;
+                self.flags.parity = parity(self.registers.a_reg);
             },
             0x2F => { // CMA
-                self.registers.a_reg =! self.registers.a_reg;
+                self.registers.a_reg = !self.registers.a_reg;
             },
             0x37 => { // STC
                 self.flags.carry = true;
