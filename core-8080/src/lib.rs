@@ -4,10 +4,17 @@ mod memory;
 use crate::registers::Registers;
 use crate::memory::Memory;
 
+const SR_0_ADDR: u16 = 0x0000;
+const SR_1_ADDR: u16 = 0x0008;
+const SR_2_ADDR: u16 = 0x0010;
+const SR_3_ADDR: u16 = 0x0018;
+const SR_4_ADDR: u16 = 0x0020;
+const SR_5_ADDR: u16 = 0x0028;
+const SR_6_ADDR: u16 = 0x0030;
+const SR_7_ADDR: u16 = 0x0038;
+
 pub struct CPU {
     memory: Memory,
-    stack: Vec<u16>,
-    stack_cache: Vec<u16>,
     registers: Registers,
     flags: ConditionFlags,
 }
@@ -20,47 +27,11 @@ struct ConditionFlags {
     // aux_carry: bool, // Not used by Space Invaders, so I'm ignoring it
 }
 
-/*struct ConditionFlagsStatus {
-    zero: Option<bool>,
-    sign: Option<bool>,
-    parity: Option<bool>,
-    carry: Option<bool>,
-}
-
-enum AddessingMode {
-    Direct,
-    Register,
-    RegisterPair,
-    RegisterIndirect,
-    RegisterPairIndirect,
-    Immediate,
-}*/
-
 impl CPU {
     pub fn cycle(&mut self) {
         let opcode = self.memory.fetch_byte();
         self.execute(opcode);
     }
-
-    /*fn process_condition_flags(&mut self, flags: ConditionFlagsStatus) {
-        match flags.zero {
-            Some(f) => self.flags.zero = f,
-            None => ()
-        }
-        match flags.sign {
-            Some(f) => self.flags.sign = f,
-            None => ()
-        }
-        match flags.carry {
-            Some(f) => self.flags.carry = f,
-            None => ()
-        }
-        match flags.parity {
-            Some(f) => self.flags.parity = f,
-            None => ()
-        }
-    }
-    */
 
     fn generate_psw(&self) -> u16 { // Could break apart save and restore to seperate Registers and ConditionFlags methods
         let data_l = (self.flags.zero as u8) |
@@ -91,9 +62,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.memory.fetch_two_bytes());
             },
             0x31 => { // LXI SP,d16
-                // Bit of a tricky opcode, since CPU doesn't have a stack pointer
-                // Interpreted as pushing d16 to the stack
-                self.stack.push(self.memory.fetch_two_bytes());
+                self.memory.stack_pointer = self.memory.fetch_two_bytes();
             },
 
             0x02 => { // STAX B
@@ -113,13 +82,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.registers.hl_reg.get_pair().wrapping_add(1));
             },
             0x33 => { // INX SP
-                // Again tricky since there is no stack pointer.
-                // Treat as popping off and caching most recent stack value, as if the stack pointer
-                // was actually incremented, but the data is still in memory.
-                // See 0x3B DCX SP for the complement function.
-                // If this doesn't work, will probably have to restructure to include the stack in the RAM
-                // like the 8080 actually does.
-                self.stack_cache.push(self.stack.pop().unwrap());
+                self.memory.stack_pointer = self.memory.stack_pointer.wrapping_add(1);
             },
 
             0x04 => { // INR B
@@ -262,13 +225,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.registers.hl_reg.get_pair().wrapping_sub(1));
             },
             0x3B => { //DCX SP
-                // Again tricky since there is no stack pointer.
-                // Treat as pushing recent cached value to stack, as if the stack pointer
-                // was actually decremented, and the data was still in memory.
-                // See 0x33 DCX SP for the complement function.
-                // If this doesn't work, will probably have to restructure to include the stack in the RAM
-                // like the 8080 actually does.
-                self.stack.push(self.stack_cache.pop().unwrap());
+                self.memory.stack_pointer = self.memory.stack_pointer.wrapping_sub(1);
             },
 
             0x40 => (), // MOV B,B
@@ -493,54 +450,48 @@ impl CPU {
             // ****** Branch Group ******
             // *** Returns ***
             0xC9 => { // RET
-                self.memory.program_counter = self.stack.pop().unwrap(); // Pop program counter from the stack
+                self.memory.program_counter = self.memory.pop_stack();
             },
             0xC0 => { // RNZ
                 if self.flags.zero == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xC8 => { // RZ
                 if self.flags.zero == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xD0 => { // RNC
                 if self.flags.carry == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xD8 => { // RC
                 if self.flags.carry == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xE0 => { // RPO
                 if self.flags.parity == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xE8 => { // RPE
                 if self.flags.parity == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xF0 => { // RP
                 if self.flags.sign == false {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
             0xF8 => { // RM
                 if self.flags.sign == true {
-                    self.memory.program_counter = self.stack.pop().unwrap();
+                    self.memory.program_counter = self.memory.pop_stack();
                 }
             },
-
-            // *** Calls ***
-            0xCD => { // CALL a16
-                self.stack.push(self.memory.program_counter); // Push program counter to the stack
-                self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
-            }
             
             // *** Jumps ***
             0xC3 => { //JMP a16
@@ -587,36 +538,124 @@ impl CPU {
                 }
             },
 
+            // *** Calls ***
+            0xC4 => { // CNZ a16
+                if self.flags.zero == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xCC => { // CZ a16
+                if self.flags.zero == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xD4 => { // CNC a16
+                if self.flags.carry == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xDC => { // CC a16
+                if self.flags.carry == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xE4 => { // CPO a16
+                if self.flags.parity == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xEC => { // CPE a16
+                if self.flags.parity == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xF4 => { // CP a16
+                if self.flags.sign == false {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xFC => { // CM a16
+                if self.flags.sign == true {
+                    self.memory.push_stack(self.memory.program_counter);
+                    self.memory.program_counter = self.memory.fetch_two_bytes();
+                }
+            },
+            0xCD => { // CALL a16
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = self.memory.fetch_two_bytes(); // Set program counter to new address
+            }
+
+            // *** Subroutines ***
+            0xC7 => { // RST 0
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_0_ADDR;
+            },
+            0xCF => { // RST 1
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_1_ADDR;
+            },
+            0xD7 => { // RST 2
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_2_ADDR;
+            },
+            0xDF => { // RST 3
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_3_ADDR;
+            },
+            0xE7 => { // RST 4
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_4_ADDR;
+            },
+            0xEF => { // RST 5
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_5_ADDR;
+            },
+            0xF7 => { // RST 6
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_6_ADDR;
+            },
+            0xFF => { // RST 7
+                self.memory.push_stack(self.memory.program_counter); // Push program counter to stack
+                self.memory.program_counter = SR_7_ADDR;
+            },
+
             // ****** Stack, IO, and Machine Control Group ******
             0x00 => (), // NOP
             0x76 => { // HLT
                 self.memory.program_counter -= 1;
             },
             0xC1 => { // POP B
-                self.registers.bc_reg.set_pair(self.stack.pop().unwrap());
+                self.registers.bc_reg.set_pair(self.memory.pop_stack());
             },
             0xD1 => { // POP D
-                self.registers.de_reg.set_pair(self.stack.pop().unwrap());
+                self.registers.de_reg.set_pair(self.memory.pop_stack());
             },
             0xE1 => { // POP H
-                self.registers.hl_reg.set_pair(self.stack.pop().unwrap());
+                self.registers.hl_reg.set_pair(self.memory.pop_stack());
             },
             0xF1 => { // POP PSW
-                let data = self.stack.pop().unwrap(); // Use local avoid double reference
+                let data = self.memory.pop_stack(); // Use local avoid double reference
                 self.restore_psw(data);
             },
             0xC5 => { // PUSH B
-                self.stack.push(self.registers.bc_reg.get_pair());
+                self.memory.push_stack(self.registers.bc_reg.get_pair());
             },
             0xD5 => { // PUSH D
-                self.stack.push(self.registers.de_reg.get_pair());
+                self.memory.push_stack(self.registers.de_reg.get_pair());
             },
             0xE5 => { // PUSH H
-                self.stack.push(self.registers.hl_reg.get_pair());
+                self.memory.push_stack(self.registers.hl_reg.get_pair());
             },
             0xF5 => { // PUSH PSW
                 let data = self.generate_psw();
-                self.stack.push(data);
+                self.memory.push_stack(data);
             },
             0xE3 => { // XTHL
                 let temp = self.memory.program_counter;
@@ -659,5 +698,5 @@ fn parity(a: u8) -> bool {
     let mut a = a;
     a ^= a >> 4;
     a &= 0x0F;
-    return (0x6996 >> a) & 0x1 == 1;
+    return !((0x6996 >> a) & 0x1 == 1);
 }
