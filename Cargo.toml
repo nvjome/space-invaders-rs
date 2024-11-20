@@ -1,4 +1,4 @@
 [workspace]
 
-members = ["core-8080", "frontend-sdl"]
+members = ["core_8080", "frontend_sdl"]
 resolver = "2"

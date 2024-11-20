@@ -1,5 +1,5 @@
 [package]
-name = "frontend-sdl"
+name = "core_8080"
 version = "0.1.0"
 edition = "2021"
 

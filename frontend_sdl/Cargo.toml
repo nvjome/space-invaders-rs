@@ -1,0 +1,8 @@
+[package]
+name = "frontend_sdl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+core_8080 = { version = "0.1.0", path = "../core_8080" }
+sdl2 = "0.37.0"
