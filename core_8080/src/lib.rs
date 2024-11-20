@@ -312,28 +312,55 @@ impl CPU {
             // ****** Arithmetic Group ******
             // *** Decrements ***
             0x05 => { // DCR B
-                todo!()
+                self.registers.bc_reg.high = self.registers.bc_reg.high.wrapping_sub(1);
+                self.flags.zero = self.registers.bc_reg.high == 0;
+                self.flags.sign = self.registers.bc_reg.high & 0x80 != 0;
+                self.flags.parity = parity(self.registers.bc_reg.high);
             },
             0x0D => { // DCR C
-                todo!()
+                self.registers.bc_reg.low = self.registers.bc_reg.low.wrapping_sub(1);
+                self.flags.zero = self.registers.bc_reg.low == 0;
+                self.flags.sign = self.registers.bc_reg.low & 0x80 != 0;
+                self.flags.parity = parity(self.registers.bc_reg.low);
             },
             0x15 => { // DCR D
-                todo!()
+                self.registers.de_reg.high = self.registers.de_reg.high.wrapping_sub(1);
+                self.flags.zero = self.registers.de_reg.high == 0;
+                self.flags.sign = self.registers.de_reg.high & 0x80 != 0;
+                self.flags.parity = parity(self.registers.de_reg.high);
             },
             0x1D => { // DCR E
-                todo!()
+                self.registers.de_reg.low = self.registers.de_reg.low.wrapping_sub(1);
+                self.flags.zero = self.registers.de_reg.low == 0;
+                self.flags.sign = self.registers.de_reg.low & 0x80 != 0;
+                self.flags.parity = parity(self.registers.de_reg.low);
             },
             0x25 => { // DCR H
-                todo!()
+                self.registers.hl_reg.high = self.registers.hl_reg.high.wrapping_sub(1);
+                self.flags.zero = self.registers.hl_reg.high == 0;
+                self.flags.sign = self.registers.hl_reg.high & 0x80 != 0;
+                self.flags.parity = parity(self.registers.hl_reg.high);
             },
             0x2D => { // DCR L
-                todo!()
+                self.registers.hl_reg.low = self.registers.hl_reg.low.wrapping_sub(1);
+                self.flags.zero = self.registers.hl_reg.low == 0;
+                self.flags.sign = self.registers.hl_reg.low & 0x80 != 0;
+                self.flags.parity = parity(self.registers.hl_reg.low);
             },
             0x35 => { // DCR M
-                todo!()
+                let addr = self.registers.hl_reg.get_pair();
+                let data_old = self.memory.read_byte(addr);
+                let data_new = data_old.wrapping_sub(1);
+                self.memory.write_byte(addr, data_new);
+                self.flags.zero = data_new == 0;
+                self.flags.sign = data_new & 0x80 != 0;
+                self.flags.parity = parity(data_new);
             },
             0x3D => { // DCR A
-                todo!()
+                self.registers.a_reg = self.registers.a_reg.wrapping_sub(1);
+                self.flags.zero = self.registers.a_reg == 0;
+                self.flags.sign = self.registers.a_reg & 0x80 != 0;
+                self.flags.parity = parity(self.registers.a_reg);
             },
             0x0B => { //DCX B
                 self.registers.bc_reg.set_pair(self.registers.bc_reg.get_pair().wrapping_sub(1));
