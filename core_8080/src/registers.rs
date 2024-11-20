@@ -5,6 +5,17 @@ pub struct Registers {
     pub hl_reg: RegisterPair,
 }
 
+impl Registers {
+    pub fn new() -> Self {
+        Self {
+            a_reg: 0,
+            bc_reg: RegisterPair {high: 0, low: 0},
+            de_reg: RegisterPair {high: 0, low: 0},
+            hl_reg: RegisterPair {high: 0, low: 0},
+        }
+    }
+}
+
 pub struct RegisterPair {
     pub high: u8,
     pub low: u8,

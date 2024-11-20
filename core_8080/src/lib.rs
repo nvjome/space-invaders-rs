@@ -28,6 +28,14 @@ struct ConditionFlags {
 }
 
 impl CPU {
+    pub fn new() -> Self {
+        Self {
+            memory: Memory::new(),
+            registers: Registers::new(),
+            flags: ConditionFlags {zero: false, sign: false, parity: false, carry: false},
+        }
+    }
+
     pub fn cycle(&mut self) {
         let opcode = self.memory.fetch_byte();
         self.execute(opcode);

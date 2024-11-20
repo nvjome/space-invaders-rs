@@ -7,6 +7,14 @@ pub struct Memory {
 }
 
 impl Memory {
+    pub fn new() -> Self {
+        Self {
+            ram: [0; MEM_SIZE],
+            program_counter: 0,
+            stack_pointer: 0,
+        }
+    }
+
     pub fn fetch_byte(&mut self) -> u8 {
         let byte = self.ram[self.program_counter as usize];
         self.program_counter += 1;
