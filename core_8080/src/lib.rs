@@ -450,16 +450,22 @@ impl CPU {
 
             // ****** Logic Group ******
             0x07 => { // RLC
-                todo!()
+                self.registers.a_reg = self.registers.a_reg.rotate_left(1);
+                self.flags.carry = self.registers.a_reg & 0x01 == 0x01;
             },
             0x0F => { // RRC
-                todo!()
+                self.registers.a_reg = self.registers.a_reg.rotate_right(1);
+                self.flags.carry = self.registers.a_reg & 0x80 == 0x80;
             },
             0x17 => { // RAL
-                todo!()
+                let temp = self.registers.a_reg;
+                self.registers.a_reg = (temp << 1) | (self.flags.carry as u8);
+                self.flags.carry = temp & 0x80 == 0x80;
             },
             0x1F => { // RAR
-                todo!()
+                let temp = self.registers.a_reg;
+                self.registers.a_reg = ((self.flags.carry as u8) << 7 ) | (temp >> 1);
+                self.flags.carry = temp & 0x01 == 0x01;
             },
             0x27 => { // DAA
                 todo!()
@@ -709,7 +715,7 @@ impl CPU {
                 todo!()
             },
 
-            _ => panic!("Attempted to execute undefined instruction {:#03x}", opcode)
+            _ => panic!("Attempted to execute undefined instruction {:#04x}", opcode)
         }
     }
 }
@@ -730,4 +736,20 @@ fn parity(a: u8) -> bool {
     a ^= a >> 4;
     a &= 0x0F;
     return !((0x6996 >> a) & 0x1 == 1);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const BAD_OPS:[u8; 13] = [0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38, 0xCB, 0xD9, 0xDD, 0xE3, 0xED, 0xFD];
+    #[test]
+    fn all_opcodes_exist() {
+        let mut cpu = CPU::new();
+        for op in 0x00..0xFF {
+            if !BAD_OPS.contains(&op) {
+                cpu.execute(op);
+            }
+        }
+    }
 }
