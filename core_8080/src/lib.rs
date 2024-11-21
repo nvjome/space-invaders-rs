@@ -2,7 +2,9 @@ mod registers;
 mod memory;
 mod shift_register;
 mod condition_flags;
+mod io;
 
+use io::Inputs;
 use shift_register::ShiftRegister;
 use registers::Registers;
 use memory::Memory;
@@ -25,6 +27,7 @@ pub struct CPU {
     flags: ConditionFlags,
     shifter: ShiftRegister,
     interrupt_enable: bool,
+    input: Inputs,
 }
 
 impl CPU {
@@ -35,6 +38,7 @@ impl CPU {
             flags: ConditionFlags::new(),
             interrupt_enable: false,
             shifter: ShiftRegister::new(),
+            input: Inputs::new(),
         }
     }
 
@@ -776,6 +780,8 @@ impl CPU {
             0xDB => { // IN d8
                 let port = self.memory.fetch_byte();
                 let data = match port {
+                    0x01 => self.input.port1,
+                    0x02 => self.input.port2,
                     0x03 => self.shifter.get_shift(),
                     _ => 0x00
                 };
