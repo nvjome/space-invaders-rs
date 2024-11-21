@@ -341,6 +341,71 @@ impl CPU {
             0x7F => (), // MOV A,A
 
             // ****** Arithmetic Group ******
+            // *** Increments ***
+            0x03 => { // INX B
+                self.registers.bc_reg.set_pair(self.registers.bc_reg.get_pair().wrapping_add(1));
+            },
+            0x13 => { // INX D
+                self.registers.de_reg.set_pair(self.registers.de_reg.get_pair().wrapping_add(1));
+            },
+            0x23 => { // INX D
+                self.registers.hl_reg.set_pair(self.registers.hl_reg.get_pair().wrapping_add(1));
+            },
+            0x33 => { // INX SP
+                self.memory.stack_pointer = self.memory.stack_pointer.wrapping_add(1);
+            },
+            0x04 => { // INR B
+                self.registers.bc_reg.high = self.registers.bc_reg.high.wrapping_add(1);
+                self.flags.zero = self.registers.bc_reg.high == 0;
+                self.flags.sign = self.registers.bc_reg.high & 0x80 != 0;
+                self.flags.parity = parity(self.registers.bc_reg.high);
+            },
+            0x0C => { // INR C
+                self.registers.bc_reg.low = self.registers.bc_reg.low.wrapping_add(1);
+                self.flags.zero = self.registers.bc_reg.low == 0;
+                self.flags.sign = self.registers.bc_reg.low & 0x80 != 0;
+                self.flags.parity = parity(self.registers.bc_reg.low);
+            },
+            0x14 => { // INR D
+                self.registers.de_reg.high = self.registers.de_reg.high.wrapping_add(1);
+                self.flags.zero = self.registers.de_reg.high == 0;
+                self.flags.sign = self.registers.de_reg.high & 0x80 != 0;
+                self.flags.parity = parity(self.registers.de_reg.high);
+            },
+            0x1C => { // INR E
+                self.registers.de_reg.low = self.registers.de_reg.low.wrapping_add(1);
+                self.flags.zero = self.registers.de_reg.low == 0;
+                self.flags.sign = self.registers.de_reg.low & 0x80 != 0;
+                self.flags.parity = parity(self.registers.de_reg.low);
+            },
+            0x24 => { // INR H
+                self.registers.hl_reg.high = self.registers.hl_reg.high.wrapping_add(1);
+                self.flags.zero = self.registers.hl_reg.high == 0;
+                self.flags.sign = self.registers.hl_reg.high & 0x80 != 0;
+                self.flags.parity = parity(self.registers.hl_reg.high);
+            },
+            0x2C => { // INR L
+                self.registers.hl_reg.low = self.registers.hl_reg.low.wrapping_add(1);
+                self.flags.zero = self.registers.hl_reg.low == 0;
+                self.flags.sign = self.registers.hl_reg.low & 0x80 != 0;
+                self.flags.parity = parity(self.registers.hl_reg.low);
+            },
+            0x34 => { // INR M
+                let addr = self.registers.hl_reg.get_pair();
+                let data_old = self.memory.read_byte(addr);
+                let data_new = data_old.wrapping_add(1);
+                self.memory.write_byte(addr, data_new);
+                self.flags.zero = data_new == 0;
+                self.flags.sign = data_new & 0x80 != 0;
+                self.flags.parity = parity(data_new);
+            },
+            0x3C => { // INR A
+                self.registers.a_reg = self.registers.a_reg.wrapping_add(1);
+                self.flags.zero = self.registers.a_reg == 0;
+                self.flags.sign = self.registers.a_reg & 0x80 != 0;
+                self.flags.parity = parity(self.registers.a_reg);
+            },
+
             // *** Decrements ***
             0x05 => { // DCR B
                 self.registers.bc_reg.high = self.registers.bc_reg.high.wrapping_sub(1);
@@ -406,69 +471,26 @@ impl CPU {
                 self.memory.stack_pointer = self.memory.stack_pointer.wrapping_sub(1);
             },
 
-            // *** Increments ***
-            0x03 => { // INX B
-                self.registers.bc_reg.set_pair(self.registers.bc_reg.get_pair().wrapping_add(1));
+            // *** Double Adds ***
+            0x09 => { // DAD B
+                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.registers.bc_reg.get_pair() as u16);
+                self.registers.hl_reg.set_pair(result);
+                self.flags.carry = carry;
             },
-            0x13 => { // INX D
-                self.registers.de_reg.set_pair(self.registers.de_reg.get_pair().wrapping_add(1));
+            0x19 => { // DAD D
+                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.registers.de_reg.get_pair() as u16);
+                self.registers.hl_reg.set_pair(result);
+                self.flags.carry = carry;
             },
-            0x23 => { // INX D
-                self.registers.hl_reg.set_pair(self.registers.hl_reg.get_pair().wrapping_add(1));
+            0x29 => { // DAD H
+                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.registers.hl_reg.get_pair() as u16);
+                self.registers.hl_reg.set_pair(result);
+                self.flags.carry = carry;
             },
-            0x33 => { // INX SP
-                self.memory.stack_pointer = self.memory.stack_pointer.wrapping_add(1);
-            },
-            0x04 => { // INR B
-                self.registers.bc_reg.high = self.registers.bc_reg.high.wrapping_add(1);
-                self.flags.zero = self.registers.bc_reg.high == 0;
-                self.flags.sign = self.registers.bc_reg.high & 0x80 != 0;
-                self.flags.parity = parity(self.registers.bc_reg.high);
-            },
-            0x0C => { // INR C
-                self.registers.bc_reg.low = self.registers.bc_reg.low.wrapping_add(1);
-                self.flags.zero = self.registers.bc_reg.low == 0;
-                self.flags.sign = self.registers.bc_reg.low & 0x80 != 0;
-                self.flags.parity = parity(self.registers.bc_reg.low);
-            },
-            0x14 => { // INR D
-                self.registers.de_reg.high = self.registers.de_reg.high.wrapping_add(1);
-                self.flags.zero = self.registers.de_reg.high == 0;
-                self.flags.sign = self.registers.de_reg.high & 0x80 != 0;
-                self.flags.parity = parity(self.registers.de_reg.high);
-            },
-            0x1C => { // INR E
-                self.registers.de_reg.low = self.registers.de_reg.low.wrapping_add(1);
-                self.flags.zero = self.registers.de_reg.low == 0;
-                self.flags.sign = self.registers.de_reg.low & 0x80 != 0;
-                self.flags.parity = parity(self.registers.de_reg.low);
-            },
-            0x24 => { // INR H
-                self.registers.hl_reg.high = self.registers.hl_reg.high.wrapping_add(1);
-                self.flags.zero = self.registers.hl_reg.high == 0;
-                self.flags.sign = self.registers.hl_reg.high & 0x80 != 0;
-                self.flags.parity = parity(self.registers.hl_reg.high);
-            },
-            0x2C => { // INR L
-                self.registers.hl_reg.low = self.registers.hl_reg.low.wrapping_add(1);
-                self.flags.zero = self.registers.hl_reg.low == 0;
-                self.flags.sign = self.registers.hl_reg.low & 0x80 != 0;
-                self.flags.parity = parity(self.registers.hl_reg.low);
-            },
-            0x34 => { // INR M
-                let addr = self.registers.hl_reg.get_pair();
-                let data_old = self.memory.read_byte(addr);
-                let data_new = data_old.wrapping_add(1);
-                self.memory.write_byte(addr, data_new);
-                self.flags.zero = data_new == 0;
-                self.flags.sign = data_new & 0x80 != 0;
-                self.flags.parity = parity(data_new);
-            },
-            0x3C => { // INR A
-                self.registers.a_reg = self.registers.a_reg.wrapping_add(1);
-                self.flags.zero = self.registers.a_reg == 0;
-                self.flags.sign = self.registers.a_reg & 0x80 != 0;
-                self.flags.parity = parity(self.registers.a_reg);
+            0x39 => { // DAD SP
+                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.memory.stack_pointer);
+                self.registers.hl_reg.set_pair(result);
+                self.flags.carry = carry;
             },
 
             // ****** Logic Group ******
