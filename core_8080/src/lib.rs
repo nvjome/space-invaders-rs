@@ -1,8 +1,12 @@
 mod registers;
 mod memory;
+mod shift_register;
+mod condition_flags;
 
-use crate::registers::Registers;
-use crate::memory::Memory;
+use shift_register::ShiftRegister;
+use registers::Registers;
+use memory::Memory;
+use condition_flags::ConditionFlags;
 
 const SR_0_ADDR: u16 = 0x0000;
 const SR_1_ADDR: u16 = 0x0008;
@@ -19,15 +23,8 @@ pub struct CPU {
     memory: Memory,
     registers: Registers,
     flags: ConditionFlags,
+    shifter: ShiftRegister,
     interrupt_enable: bool,
-}
-
-struct ConditionFlags {
-    zero: bool,
-    sign: bool,
-    parity: bool,
-    carry: bool,
-    // aux_carry: bool, // Not used by Space Invaders, so I'm ignoring it
 }
 
 impl CPU {
@@ -35,8 +32,9 @@ impl CPU {
         Self {
             memory: Memory::new(),
             registers: Registers::new(),
-            flags: ConditionFlags {zero: false, sign: false, parity: false, carry: false},
+            flags: ConditionFlags::new(),
             interrupt_enable: false,
+            shifter: ShiftRegister::new(),
         }
     }
 
@@ -745,10 +743,21 @@ impl CPU {
                 self.memory.stack_pointer = self.registers.hl_reg.get_pair();
             },
             0xD3 => { // OUT d8
-                todo!()
+                let port = self.memory.fetch_byte();
+                let data = self.registers.a_reg;
+                match port {
+                    0x02 => self.shifter.set_offset(data),
+                    0x04 => self.shifter.load(data),
+                    _ => ()
+                }
             },
-            0xD6 => { // IN d8
-                todo!()
+            0xDB => { // IN d8
+                let port = self.memory.fetch_byte();
+                let data = match port {
+                    0x03 => self.shifter.get_shift(),
+                    _ => 0x00
+                };
+                self.registers.a_reg = data
             },
             0xF3 => { // DI
                 self.interrupt_enable = false;
