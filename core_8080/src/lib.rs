@@ -13,10 +13,13 @@ const SR_5_ADDR: u16 = 0x0028;
 const SR_6_ADDR: u16 = 0x0030;
 const SR_7_ADDR: u16 = 0x0038;
 
+const ROM_ADDR: u16 = 0x0000;
+
 pub struct CPU {
     memory: Memory,
     registers: Registers,
     flags: ConditionFlags,
+    interrupt_enable: bool,
 }
 
 struct ConditionFlags {
@@ -33,12 +36,34 @@ impl CPU {
             memory: Memory::new(),
             registers: Registers::new(),
             flags: ConditionFlags {zero: false, sign: false, parity: false, carry: false},
+            interrupt_enable: false,
         }
+    }
+
+    pub fn load_rom(&mut self, buffer: &Vec<u8>) {
+        let start = ROM_ADDR as usize;
+        let end = (ROM_ADDR as usize) + buffer.len();
+        self.memory.ram[start..end].copy_from_slice(&buffer);
+        self.memory.program_counter = ROM_ADDR;
     }
 
     pub fn cycle(&mut self) {
         let opcode = self.memory.fetch_byte();
         self.execute(opcode);
+    }
+
+    pub fn interrupt(&mut self, interrupt: u8) {
+        match interrupt {
+            0 => self.execute(0xC7),
+            1 => self.execute(0xCF),
+            2 => self.execute(0xD7),
+            3 => self.execute(0xDF),
+            4 => self.execute(0xE7),
+            5 => self.execute(0xEF),
+            6 => self.execute(0xF7),
+            7 => self.execute(0xFF),
+            _ => ()
+        }
     }
 
     fn generate_psw(&self) -> u16 { // Could break apart save and restore to seperate Registers and ConditionFlags methods
@@ -695,7 +720,7 @@ impl CPU {
                 self.registers.hl_reg.set_pair(self.memory.pop_stack());
             },
             0xF1 => { // POP PSW
-                let data = self.memory.pop_stack(); // Use local avoid double reference
+                let data = self.memory.pop_stack(); // Use local to avoid double reference
                 self.restore_psw(data);
             },
             0xC5 => { // PUSH B
@@ -712,8 +737,8 @@ impl CPU {
                 self.memory.push_stack(data);
             },
             0xE3 => { // XTHL
-                let temp = self.memory.program_counter;
-                self.memory.program_counter = self.registers.hl_reg.get_pair();
+                let temp = self.memory.pop_stack();
+                self.memory.push_stack(self.registers.hl_reg.get_pair());
                 self.registers.hl_reg.set_pair(temp);
             },
             0xF9 => { // SPHL
@@ -726,10 +751,10 @@ impl CPU {
                 todo!()
             },
             0xF3 => { // DI
-                todo!()
+                self.interrupt_enable = false;
             },
             0xFB => { // EI
-                todo!()
+                self.interrupt_enable = true;
             },
 
             _ => panic!("Attempted to execute undefined instruction {:#04x}", opcode)
