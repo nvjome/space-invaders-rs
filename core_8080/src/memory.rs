@@ -24,7 +24,7 @@ impl Memory {
     pub fn fetch_two_bytes(&mut self) -> u16 {
         let data_low = self.fetch_byte();
         let data_high = self.fetch_byte();
-        (data_high as u16) << 8 & data_low as u16
+        (data_high as u16) << 8 | data_low as u16
     }
 
     pub fn read_byte(&self, address: u16) -> u8 {
@@ -34,7 +34,7 @@ impl Memory {
     pub fn read_two_bytes(&self, address: u16) -> u16 {
         let data_low = self.ram[address as usize];
         let data_high = self.ram[address as usize + 1];
-        (data_high as u16) << 8 & data_low as u16
+        (data_high as u16) << 8 | data_low as u16
     }
 
     pub fn write_byte(&mut self, address: u16, data: u8) {

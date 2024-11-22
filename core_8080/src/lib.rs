@@ -51,6 +51,7 @@ impl CPU {
 
     pub fn cycle(&mut self) {
         let opcode = self.memory.fetch_byte();
+        //println!("{:#04x}", opcode);
         self.execute(opcode);
     }
 
@@ -544,6 +545,34 @@ impl CPU {
             },
             0x3F => { // CMC
                 self.flags.carry = !self.flags.carry;
+            },
+            0xE6 => { // ANI d8
+                self.registers.a_reg &= self.memory.fetch_byte();
+                self.flags.carry = false;
+                self.flags.zero = self.registers.a_reg == 0;
+                self.flags.sign = self.registers.a_reg & 0x80 != 0;
+                self.flags.parity = parity(self.registers.a_reg);
+            },
+            0xEE => { // XRI d8
+                self.registers.a_reg ^= self.memory.fetch_byte();
+                self.flags.carry = false;
+                self.flags.zero = self.registers.a_reg == 0;
+                self.flags.sign = self.registers.a_reg & 0x80 != 0;
+                self.flags.parity = parity(self.registers.a_reg);
+            },
+            0xF6 => { // ORI d8
+                self.registers.a_reg &= self.memory.fetch_byte();
+                self.flags.carry = false;
+                self.flags.zero = self.registers.a_reg == 0;
+                self.flags.sign = self.registers.a_reg & 0x80 != 0;
+                self.flags.parity = parity(self.registers.a_reg);
+            },
+            0xFE => { // CPI d8
+                let (result, carry) = self.registers.a_reg.overflowing_sub(self.memory.fetch_byte());
+                self.flags.carry = carry;
+                self.flags.zero = result == 0;
+                self.flags.sign = result & 0x80 != 0;
+                self.flags.parity = parity(result);
             },
 
             // ****** Branch Group ******
