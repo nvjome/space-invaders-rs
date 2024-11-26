@@ -26,9 +26,9 @@ fn main() {
     }
 
     let mut cpu = core_8080::CPU::new();
-    cpu.load_rom(&rom_buffer);
+    cpu.load_rom(&rom_buffer).unwrap();
 
     for _i in 0..10000 {
-        cpu.tick().unwrap();
+        let _ = cpu.tick().unwrap();
     }
 }

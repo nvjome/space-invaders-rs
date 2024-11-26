@@ -1,6 +1,7 @@
 use crate::core_error::CoreError;
 
 const MEM_SIZE: usize = 0x10000;
+const ROM_SIZE: usize = 0x2000;
 
 pub struct Memory {
     pub ram: [u8; MEM_SIZE],
@@ -15,6 +16,17 @@ impl Memory {
             program_counter: 0,
             stack_pointer: 0,
         }
+    }
+
+    pub fn load_rom(&mut self, buffer: &Vec<u8>, start_addr: u16) -> Result<(), CoreError> {
+        if buffer.len() > ROM_SIZE {
+            return Err(CoreError::RomSizeError)
+        }
+        let start = start_addr as usize;
+        let end = (start_addr as usize) + buffer.len();
+        self.ram[start..end].copy_from_slice(&buffer);
+        self.program_counter = start_addr;
+        Ok(())
     }
 
     pub fn fetch_byte(&mut self) -> Result<u8, CoreError> {

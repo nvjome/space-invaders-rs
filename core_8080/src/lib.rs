@@ -44,11 +44,8 @@ impl CPU {
         }
     }
 
-    pub fn load_rom(&mut self, buffer: &Vec<u8>) {
-        let start = ROM_ADDR as usize;
-        let end = (ROM_ADDR as usize) + buffer.len();
-        self.memory.ram[start..end].copy_from_slice(&buffer);
-        self.memory.program_counter = ROM_ADDR;
+    pub fn load_rom(&mut self, buffer: &Vec<u8>) -> Result<(), CoreError> {
+        self.memory.load_rom(buffer, ROM_ADDR)
     }
 
     pub fn tick(&mut self) -> Result<u32, CoreError>{
