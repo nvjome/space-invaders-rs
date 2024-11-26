@@ -922,16 +922,6 @@ impl CPU {
     }
 }
 
-/*
-fn concat_bytes(a: u8, b: u8) -> u16 {
-    (a as u16) << 8 & b as u16
-}
-
-fn split_bytes(a: u16) -> (u8, u8) {
-    (((a & 0xFF00) >> 8) as u8, (a & 0x00FF) as u8)
-}
-*/
-
 fn parity(a: u8) -> bool {
     // Shamelessly inspired by https://graphics.stanford.edu/~seander/bithacks.html#ParityParallel
     let mut a = a;
