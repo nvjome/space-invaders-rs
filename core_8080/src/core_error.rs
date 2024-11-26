@@ -8,6 +8,9 @@ pub enum CoreError {
     #[error("program counter out of bounds\n index: {index}")]
     ProgramCounterError { index: u16 },
 
+    #[error("program pointer overflow")]
+    ProgramCounterOverflow,
+
     #[error("attempted to read outside of RAM\n index: {index}")]
     IndexError { index: u16 },
     

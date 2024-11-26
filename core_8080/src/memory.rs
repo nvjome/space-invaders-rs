@@ -20,7 +20,10 @@ impl Memory {
     pub fn fetch_byte(&mut self) -> Result<u8, CoreError> {
         if (self.program_counter as usize) < self.ram.len() {
             let byte = self.ram[self.program_counter as usize];
-            self.program_counter += 1;
+            match self.program_counter.checked_add(1) {
+                Some(x) => self.program_counter = x,
+                None => return Err(CoreError::ProgramCounterOverflow)
+            }
             Ok(byte)
         } else {
             Err(CoreError::IndexError { index: self.program_counter })

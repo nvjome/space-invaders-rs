@@ -790,41 +790,41 @@ impl CPU {
             // *** Subroutines ***
             0xC7 => { // RST 0
                 self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
-                self.memory.program_counter = SR_0_ADDR;
+                self.memory.program_counter = SR_0_ADDR; // Set program counter to new address
                 cycles = 3;
             },
             0xCF => { // RST 1
-                self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
+                self.memory.push_stack(self.memory.program_counter)?;
                 self.memory.program_counter = SR_1_ADDR;
                 cycles = 3;
             },
             0xD7 => { // RST 2
-                self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
+                self.memory.push_stack(self.memory.program_counter)?;
                 self.memory.program_counter = SR_2_ADDR;
                 cycles = 3;
             },
             0xDF => { // RST 3
-                self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
+                self.memory.push_stack(self.memory.program_counter)?;
                 self.memory.program_counter = SR_3_ADDR;
                 cycles = 3;
             },
             0xE7 => { // RST 4
-                self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
+                self.memory.push_stack(self.memory.program_counter)?;
                 self.memory.program_counter = SR_4_ADDR;
                 cycles = 3;
             },
             0xEF => { // RST 5
-                self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
+                self.memory.push_stack(self.memory.program_counter)?;
                 self.memory.program_counter = SR_5_ADDR;
                 cycles = 3;
             },
             0xF7 => { // RST 6
-                self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
+                self.memory.push_stack(self.memory.program_counter)?;
                 self.memory.program_counter = SR_6_ADDR;
                 cycles = 3;
             },
             0xFF => { // RST 7
-                self.memory.push_stack(self.memory.program_counter)?; // Push program counter to stack
+                self.memory.push_stack(self.memory.program_counter)?;
                 self.memory.program_counter = SR_7_ADDR;
                 cycles = 3;
             },
@@ -836,7 +836,10 @@ impl CPU {
             // ****** Stack, IO, and Machine Control Group ******
             0x00 => (), // NOP
             0x76 => { // HLT
-                self.memory.program_counter -= 1;
+                match self.memory.stack_pointer.checked_sub(1) {
+                    Some(x) => self.memory.stack_pointer = x,
+                    None => return Err(CoreError::StackPointerOverflow)
+                }
             },
             0xC1 => { // POP B
                 self.registers.bc_reg.set_pair(self.memory.pop_stack()?);
