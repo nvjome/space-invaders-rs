@@ -29,6 +29,6 @@ fn main() {
     cpu.load_rom(&rom_buffer);
 
     for _i in 0..10000 {
-        cpu.cycle();
+        cpu.tick().unwrap();
     }
 }
