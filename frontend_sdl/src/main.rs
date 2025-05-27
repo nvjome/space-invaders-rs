@@ -1,4 +1,4 @@
-use core_8080;
+use core_8080::CPU;
 use std::{env, process};
 use std::fs::File;
 use std::io::Read;
@@ -25,7 +25,7 @@ fn main() {
         process::exit(1);
     }
 
-    let mut cpu = core_8080::CPU::new();
+    let mut cpu = CPU::new();
     cpu.load_rom(&rom_buffer).unwrap();
 
     for _i in 0..10000 {

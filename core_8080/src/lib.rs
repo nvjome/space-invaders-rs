@@ -32,6 +32,12 @@ pub struct CPU {
     pub input: Inputs,
 }
 
+impl Default for CPU {
+    fn default() -> Self {
+      Self::new()
+    }
+}
+
 impl CPU {
     pub fn new() -> Self {
         Self {
@@ -44,11 +50,11 @@ impl CPU {
         }
     }
 
-    pub fn load_rom(&mut self, buffer: &Vec<u8>) -> Result<(), CoreError> {
+    pub fn load_rom(&mut self, buffer: &[u8]) -> Result<(), CoreError> {
         self.memory.load_rom(buffer, ROM_ADDR)
     }
 
-    pub fn tick(&mut self) -> Result<u32, CoreError>{
+    pub fn tick(&mut self) -> Result<u32, CoreError> {
         let opcode = self.memory.fetch_byte()?;
         //println!("{:#04x}", opcode);
         self.execute(opcode)
@@ -79,8 +85,8 @@ impl CPU {
     fn restore_psw(&mut self, psw: u16) {
         self.registers.a_reg = ((psw & 0xFF00) >> 8) as u8;
         self.flags.zero = (psw & 0x01) == 0x01;
-        self.flags.parity = (psw & 0x02) == 0x01;
-        self.flags.carry = (psw & 0x03) == 0x01;
+        self.flags.parity = (psw & 0x02) == 0x02;
+        self.flags.carry = (psw & 0x04) == 0x04;
     }
 
     fn execute(&mut self, opcode: u8) -> Result<u32, CoreError> {
@@ -515,25 +521,25 @@ impl CPU {
 
             // *** Double Adds ***
             0x09 => { // DAD B
-                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.registers.bc_reg.get_pair() as u16);
+                let (result, carry) = self.registers.hl_reg.get_pair().overflowing_add(self.registers.bc_reg.get_pair());
                 self.registers.hl_reg.set_pair(result);
                 self.flags.carry = carry;
                 cycles = 3;
             },
             0x19 => { // DAD D
-                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.registers.de_reg.get_pair() as u16);
+                let (result, carry) = self.registers.hl_reg.get_pair().overflowing_add(self.registers.de_reg.get_pair());
                 self.registers.hl_reg.set_pair(result);
                 self.flags.carry = carry;
                 cycles = 3;
             },
             0x29 => { // DAD H
-                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.registers.hl_reg.get_pair() as u16);
+                let (result, carry) = self.registers.hl_reg.get_pair().overflowing_add(self.registers.hl_reg.get_pair());
                 self.registers.hl_reg.set_pair(result);
                 self.flags.carry = carry;
                 cycles = 3;
             },
             0x39 => { // DAD SP
-                let (result, carry) = (self.registers.hl_reg.get_pair() as u16).overflowing_add(self.memory.stack_pointer);
+                let (result, carry) = self.registers.hl_reg.get_pair().overflowing_add(self.memory.stack_pointer);
                 self.registers.hl_reg.set_pair(result);
                 self.flags.carry = carry;
                 cycles = 3;
@@ -568,7 +574,7 @@ impl CPU {
                         data_h += data_l >> 4;
                     }
                 }
-                if (data_h > 9)  | (self.flags.carry == true) {
+                if (data_h > 9)  | self.flags.carry {
                     data_h += 6;
                     if data_h > 0x0F { carry = true }
                 }
@@ -627,42 +633,42 @@ impl CPU {
                 cycles = 3;
             },
             0xC0 => { // RNZ
-                if self.flags.zero == false {
+                if !self.flags.zero {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
             0xC8 => { // RZ
-                if self.flags.zero == true {
+                if self.flags.zero {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
             0xD0 => { // RNC
-                if self.flags.carry == false {
+                if !self.flags.carry {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
             0xD8 => { // RC
-                if self.flags.carry == true {
+                if self.flags.carry {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
             0xE0 => { // RPO
-                if self.flags.parity == false {
+                if !self.flags.parity {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
             0xE8 => { // RPE
-                if self.flags.parity == true {
+                if self.flags.parity {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
             0xF0 => { // RP
-                if self.flags.sign == false {
+                if !self.flags.sign {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
             0xF8 => { // RM
-                if self.flags.sign == true {
+                if self.flags.sign {
                     self.memory.program_counter = self.memory.pop_stack()?;
                 }
             },
@@ -673,49 +679,49 @@ impl CPU {
                 cycles = 3;
             },
             0xC2 => { // JNZ a16
-                if self.flags.zero == false {
+                if !self.flags.zero {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xCA => { // JZ a16
-                if self.flags.zero == true {
+                if self.flags.zero {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xD2 => { // JNC a16
-                if self.flags.carry == false {
+                if !self.flags.carry {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xDA => { // JC a16
-                if self.flags.carry == true {
+                if self.flags.carry {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xE2 => { // JPO a16
-                if self.flags.parity == false {
+                if !self.flags.parity {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xEA => { // JPE a16
-                if self.flags.parity == true {
+                if self.flags.parity {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xF2 => { // JP a16
-                if self.flags.sign == false {
+                if !self.flags.sign {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xFA => { // JM a16
-                if self.flags.sign == true {
+                if self.flags.sign {
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
@@ -723,56 +729,56 @@ impl CPU {
 
             // *** Calls ***
             0xC4 => { // CNZ a16
-                if self.flags.zero == false {
+                if !self.flags.zero {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xCC => { // CZ a16
-                if self.flags.zero == true {
+                if self.flags.zero {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xD4 => { // CNC a16
-                if self.flags.carry == false {
+                if !self.flags.carry {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xDC => { // CC a16
-                if self.flags.carry == true {
+                if self.flags.carry {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xE4 => { // CPO a16
-                if self.flags.parity == false {
+                if !self.flags.parity {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xEC => { // CPE a16
-                if self.flags.parity == true {
+                if self.flags.parity {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xF4 => { // CP a16
-                if self.flags.sign == false {
+                if !self.flags.sign {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
                 cycles = 3;
             },
             0xFC => { // CM a16
-                if self.flags.sign == true {
+                if self.flags.sign {
                     self.memory.push_stack(self.memory.program_counter)?;
                     self.memory.program_counter = self.memory.fetch_two_bytes()?;
                 }
@@ -910,7 +916,7 @@ impl CPU {
             },
 
             _ => {
-                return Err(CoreError::OpcodeError { opcode: opcode })
+                return Err(CoreError::OpcodeError { opcode })
                 // panic!("Attempted to execute undefined instruction {:#04x}", opcode)
             }
         }
@@ -924,7 +930,7 @@ fn parity(a: u8) -> bool {
     let mut a = a;
     a ^= a >> 4;
     a &= 0x0F;
-    return !((0x6996 >> a) & 0x1 == 1);
+    (0x6996 >> a) & 0x1 != 1
 }
 
 #[cfg(test)]

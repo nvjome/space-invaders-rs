@@ -18,13 +18,13 @@ impl Memory {
         }
     }
 
-    pub fn load_rom(&mut self, buffer: &Vec<u8>, start_addr: u16) -> Result<(), CoreError> {
+    pub fn load_rom(&mut self, buffer: &[u8], start_addr: u16) -> Result<(), CoreError> {
         if buffer.len() > ROM_SIZE {
             return Err(CoreError::RomSizeError)
         }
         let start = start_addr as usize;
         let end = (start_addr as usize) + buffer.len();
-        self.ram[start..end].copy_from_slice(&buffer);
+        self.ram[start..end].copy_from_slice(buffer);
         self.program_counter = start_addr;
         Ok(())
     }

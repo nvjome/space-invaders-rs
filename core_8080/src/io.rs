@@ -6,6 +6,12 @@ pub struct Inputs {
 
 pub enum ButtonState {Pressed, Released}
 
+impl Default for Inputs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Inputs {
     pub fn new() -> Self {
         Self {
